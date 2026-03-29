@@ -66,6 +66,17 @@ def make_kml(elems: list[CsvItem], name: str, desc: str, output_path: str):
     elem_templ = """
     <Placemark>
       <name>Fuego {id}</name>
+      <LookAt>
+        <TimeStamp>
+          <when>{date}</when>
+        </TimeStamp>
+        <latitude>{lat}</latitude>
+        <longitude>{lon}</longitude>
+        <range>500</range>
+        <tilt>45</tilt>
+        <heading>0</heading>
+        <altitudeMode>relativeToGround</altitudeMode>
+      </LookAt>
       <Point>
         <coordinates>{lon},{lat},0</coordinates>
       </Point>
@@ -77,7 +88,7 @@ def make_kml(elems: list[CsvItem], name: str, desc: str, output_path: str):
         with open(output_path, 'w', encoding="utf-8") as f:
             f.write(header)
             for i, elem in enumerate(elems):
-                f.write(elem_templ.format(id=i+1, lat=elem.lat, lon=elem.lon))
+                f.write(elem_templ.format(id=i+1, lat=elem.lat, lon=elem.lon, date=elem.date))
             f.write(footer)
             return None
     except Exception as e:
@@ -85,6 +96,7 @@ def make_kml(elems: list[CsvItem], name: str, desc: str, output_path: str):
 
 
 salta_coords = [
+    #((-21.627, -68.862), (-26.490, -62.084)), # Salta entero y otros
     ((-24.1870, -68.3840), (-25.2300, -65.8030)), # S.A. de los cobres 1
     ((-23.8230, -67.2530), (-24.0670, -66.9510)), # S.A. de los cobres 2
     ((-23.4360, -66.1900), (-24.1840, -66.0220)), # S.A. de los cobres 3
@@ -127,13 +139,23 @@ def salta_filter(entries: list[CsvItem]) -> list[CsvItem]:
 
     return out
 
+def date_filter(entries: list[CsvItem], min: str, max: str) -> list[CsvItem]:
+    out = []
+    for entry in entries:
+        if (min <= entry.date <= max):
+            out.append(entry)
+    return out
+
 path =  "./data/modis_2024_Argentina.csv"
 sep = ','
+outpath = "./data/fuegos_salta.kml"
 
 entries, err = parse_csv(path, sep, lambda c: parse_tuple(c, -65.0, -20.0))
-
 if (entries == None):
     on_die(err)
-err = make_kml(salta_filter(entries), "Fuegos en Salta", "Coordenadas de fuegos en Salta", "./test.kml")
+
+salta_entries = salta_filter(entries)
+date_entries = date_filter(salta_entries, "2024-06-01", "2024-11-30")
+err = make_kml(date_entries, "Fuegos en Salta", "Coordenadas de fuegos en Salta", outpath)
 if (err != None):
     on_die(err)
